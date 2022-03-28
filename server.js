@@ -1,8 +1,10 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const { resetWatchers } = require('nodemon/lib/monitor/watch');
+const { count } = require('./mydb.js');
 const app = express();
 const sinners = require('./mydb.js');
+const rating = require('./rating.js');
 app.use(express.json())
 
 
@@ -29,22 +31,46 @@ app.put('/movie/:id',async(req,res)=>{
 
 app.post('/movie/',async(req,res)=>{
 
-let item = await new sinners(req.body)
+let item = new sinners(req.body)
+let rat = new rating({id:Number(item.id),rating:[]})
 
-// console.log(req.body)
+go = await sinners.find({id:Number(item.id)}).count()
+
+if(go==1){
+  return res.json({msg:"already exist"});
+}
+
+await rat.save((err,res)=>{
+  if(err){
+    console.log(err)
+  }
+})
 
 await item.save((err,res)=>{
   if(err){
     console.log(err)
   }
 })
-
 res.json({msg:"OK"})
+})
 
+app.post('/movie/rating/:id',async(req,res) =>{
+
+  let nums =  await sinners.find({id:Number(req.params.id)}).count()
+
+  if(nums){
+
+    await rating.updateOne({id:Number(req.params.id)},{$push:{rating:Number(req.body.rating)}})
+    let arr = await rating.find({id:Number(req.params.id)});
+    console.log(arr)
+    return res.json({rating:arr[0].rating})
+  }
+res.json({msg:"No such id exists"})
 })
 
 app.delete('/movie/:id',async (req,res)=>{
  await sinners.deleteOne({id:Number(req.params.id)});
+ await rating.deleteOne({id:Number(req.params.id)});
  res.json({msg:"ok"})
 })
 
